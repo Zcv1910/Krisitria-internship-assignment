@@ -106,7 +106,7 @@
 		
 		<div id="user-badge" style="display:none; position:fixed; top:15px; left:15px; z-index:10000;
 			background: rgba(20,20,20,0.85); border: 1px solid rgba(255,255,255,0.15);
-			border-radius: 10px; padding: 8px 14px; display:flex; align-items:center; gap:10px;
+			border-radius: 10px; padding: 8px 14px; align-items:center; gap:10px;
 			font-family: Helvetica, sans-serif; box-shadow: 0px 4px 12px rgba(0,0,0,0.4);">
 			<img id="user-avatar" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
 			<div style="color:white; font-size:13px; line-height:1.3;">
@@ -117,350 +117,353 @@
 		<!-- <div id="info"><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> css3d - periodic table.</div> -->
 
 
-		<div id="container"></div>
-		<div id="menu">
-			<button id="table">TABLE</button>
-			<button id="sphere">SPHERE</buttoSn>
-			<button id="helix">HELIX</button>
-			<button id="grid">GRID</button>
-		</div>
+		<div id="container">
+			<div id="menu">
+				<button id="table">TABLE</button>
+				<button id="sphere">SPHERE</buttoSn>
+				<button id="helix">HELIX</button>
+				<button id="grid">GRID</button>
 
-		<div id="color-legend" style="position:fixed; bottom:70px; right:15px; z-index:10000;
-			background: rgba(20,20,20,0.85); border: 1px solid rgba(255,255,255,0.15);
-			border-radius: 10px; padding: 10px 14px; font-family: Helvetica, sans-serif;
-			box-shadow: 0px 4px 12px rgba(0,0,0,0.4); color: white; font-size: 12px;">
-			<div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-				<span>LOW</span>
-				<span>High</span>
+				<div id="color-legend" style="position:fixed; bottom:70px; right:15px; z-index:10000;
+					background: rgba(20,20,20,0.85); border: 1px solid rgba(255,255,255,0.15);
+					border-radius: 10px; padding: 10px 14px; font-family: Helvetica, sans-serif;
+					box-shadow: 0px 4px 12px rgba(0,0,0,0.4); color: white; font-size: 12px;">
+					<div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+						<span>LOW</span>
+						<span>High</span>
+					</div>
+					<div style="width:180px; height:10px; border-radius:5px;
+						background: linear-gradient(90deg, #EF3022, #FDCA35, #3A9F4E);"></div>
+				</div>
 			</div>
-			<div style="width:180px; height:10px; border-radius:5px;
-				background: linear-gradient(90deg, #EF3022, #FDCA35, #3A9F4E);"></div>
-		</div>
-		
-		<script>
-			function handleCredentialResponse(response) {
-				const data = JSON.parse(atob(response.credential.split('.')[1]));
-				sessionStorage.setItem('loggedIn', 'true');
-				sessionStorage.setItem('userName', data.name);
-				sessionStorage.setItem('userPicture', data.picture);
 
-				document.getElementById('login-screen').style.display = 'none';
-				showUserBadge(data.name, data.picture);
 
-				console.log(data.email, data.name, data.picture);
-			}
+			
+			<script>
+				function handleCredentialResponse(response) {
+					const data = JSON.parse(atob(response.credential.split('.')[1]));
+					sessionStorage.setItem('loggedIn', 'true');
+					sessionStorage.setItem('userName', data.name);
+					sessionStorage.setItem('userPicture', data.picture);
 
-			function showUserBadge(name, picture) {
-				document.getElementById('user-name').textContent = `Signed in as ${name}`;
-				document.getElementById('user-avatar').src = picture;
-				document.getElementById('user-badge').style.display = 'flex';
-			}
-
-			window.onload = () => {
-				if (sessionStorage.getItem('loggedIn') === 'true') {
 					document.getElementById('login-screen').style.display = 'none';
-					showUserBadge(sessionStorage.getItem('userName'), sessionStorage.getItem('userPicture'));
+					showUserBadge(data.name, data.picture);
+
+					console.log(data.email, data.name, data.picture);
 				}
 
-				document.getElementById('logout-btn').addEventListener('click', () => {
-					sessionStorage.clear();
-					document.getElementById('user-badge').style.display = 'none';
-					document.getElementById('login-screen').style.display = 'flex';
-				});
-			}
-		</script>
-
-		<script type="importmap">
-			{
-				"imports": {
-					"three": "https://unpkg.com/three@0.170.0/build/three.module.js",
-					"three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
-				}
-			}
-		</script>
-
-		<script type="module">
-
-			import * as THREE from 'three';
-
-			import TWEEN from 'three/addons/libs/tween.module.js';
-			import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
-			import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
-
-
-			const dataURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJtO_8qCheSvXY4TOjnIPSO3grd_PrJddCRCgcw7jOJoKpbSwXeM3ImK0ycixJKO76yiEriFoWQCME/pub?output=csv';
-
-			async function parseCSV() {
-				const response = await fetch(dataURL);
-				const csvText = await response.text();
-				const parsed = Papa.parse(csvText, {header : true}).data;
-				return parsed;
-				console.log(parsed)
-				console.log(response)
-			}
-
-
-			let camera, scene, renderer;
-			let controls;
-
-			const objects = [];
-			const targets = { table: [], sphere: [], helix: [], grid: [] };
-
-			function getColorForNetWorth(netWorth) {
-				const value = parseFloat(String(netWorth).replace(/[^0-9.-]/g, ''));
-
-				if (value < 100000) {
-					return 'linear-gradient(160deg, #7a0f0f, #EF3022)';
-				}
-				if (value < 200000) {
-					return 'linear-gradient(160deg, #8a5a00, #FDCA35)';
-				}
-				return 'linear-gradient(160deg, #1d5c2c, #3A9F4E)';
-			}
-
-			init();
-
-			async function init() {
-
-				const people = await parseCSV();
-				console.log('people:', people, 'count:', people.length);
-				console.log(Object.keys(people[0]));
-				camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
-				camera.position.z = 3000;
-
-				scene = new THREE.Scene();
-
-
-				// table
-				for ( let i = 0; i < people.length; i++ ) {
-
-					// function getColorForNetWorth(netWorth) {
-					// 	let bgvalue = parseFloat(person.NetWorth);
-					// 	if (bgvalue < 100000) return '#EF3022';
-					// 	if (bgvalue < 200000) return '#FDCA35';
-					// 	if (bgvalue > 200000) return '#3A9F4E';
-					// }
-
-					const person = people[i];
-
-					const element = document.createElement('div');
-					element.className = 'element';
-					element.style.background = getColorForNetWorth(person.NetWorth);
-
-					const country = document.createElement('div');
-					country.className = 'number'; 
-					country.style.left = '20px';
-					country.style.right = 'auto';
-					country.textContent = person.Country;
-					element.appendChild(country);
-
-					const age = document.createElement('div');
-					age.className = 'number';
-					age.textContent = person.Age;
-					element.appendChild(age);
-
-					const photo = document.createElement('img');
-					photo.src = person.Photo;
-					photo.style.width = '80px';
-					photo.style.height = '80px';
-					photo.style.objectFit = 'cover';
-					photo.style.borderRadius = '4px';
-					photo.style.marginTop = '30px';
-					element.appendChild(photo);
-
-					const name = document.createElement('div');
-					name.className = 'symbol';
-					name.textContent = person.Name;
-					element.appendChild(name);
-
-					const details = document.createElement('div');
-					details.className = 'details';
-					details.textContent = person.Interest || '';
-					element.appendChild(details);
-
-					const objectCSS = new CSS3DObject(element);
-					objectCSS.position.x = Math.random() * 4000 - 2000;
-					objectCSS.position.y = Math.random() * 4000 - 2000;
-					objectCSS.position.z = Math.random() * 4000 - 2000;
-					scene.add(objectCSS);
-					objects.push(objectCSS);
-
-					// table position (20x10 grid)
-					const col = (i % 20) + 1;
-					const row = Math.floor(i / 20) + 1;
-
-					const object = new THREE.Object3D();
-					object.position.x = (col * 140) - 1330;
-					object.position.y = -(row * 180) + 990;
-					targets.table.push(object);
-
+				function showUserBadge(name, picture) {
+					document.getElementById('user-name').textContent = `Signed in as ${name}`;
+					document.getElementById('user-avatar').src = picture;
+					document.getElementById('user-badge').style.display = 'flex';
 				}
 
-				// sphere
+				window.onload = () => {
+					if (sessionStorage.getItem('loggedIn') === 'true') {
+						document.getElementById('login-screen').style.display = 'none';
+						showUserBadge(sessionStorage.getItem('userName'), sessionStorage.getItem('userPicture'));
+					}
 
-				const vector = new THREE.Vector3();
+					document.getElementById('logout-btn').addEventListener('click', () => {
+						sessionStorage.clear();
+						document.getElementById('user-badge').style.display = 'none';
+						document.getElementById('login-screen').style.display = 'flex';
+					});
+				}
+			</script>
 
-				for ( let i = 0, l = objects.length; i < l; i ++ ) {
+			<script type="importmap">
+				{
+					"imports": {
+						"three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+						"three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+					}
+				}
+			</script>
 
-					const phi = Math.acos( - 1 + ( 2 * i ) / l );
-					const theta = Math.sqrt( l * Math.PI ) * phi;
+			<script type="module">
 
-					const object = new THREE.Object3D();
+				import * as THREE from 'three';
 
-					object.position.setFromSphericalCoords( 800, phi, theta );
+				import TWEEN from 'three/addons/libs/tween.module.js';
+				import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
+				import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
-					vector.copy( object.position ).multiplyScalar( 2 );
 
-					object.lookAt( vector );
+				const dataURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSJtO_8qCheSvXY4TOjnIPSO3grd_PrJddCRCgcw7jOJoKpbSwXeM3ImK0ycixJKO76yiEriFoWQCME/pub?output=csv';
 
-					targets.sphere.push( object );
-
+				async function parseCSV() {
+					const response = await fetch(dataURL);
+					const csvText = await response.text();
+					const parsed = Papa.parse(csvText, {header : true}).data;
+					return parsed;
+					console.log(parsed)
+					console.log(response)
 				}
 
-				// helix (double)
 
-				for ( let i = 0, l = objects.length; i < l; i ++ ) {
+				let camera, scene, renderer;
+				let controls;
 
-					const theta = i * 0.175 + ( i % 2 === 0 ? 0 : Math.PI ); // alternate strand offset by 180°
-					const y = - ( i * 8 ) + 450;
+				const objects = [];
+				const targets = { table: [], sphere: [], helix: [], grid: [] };
 
-					const object = new THREE.Object3D();
+				function getColorForNetWorth(netWorth) {
+					const value = parseFloat(String(netWorth).replace(/[^0-9.-]/g, ''));
 
-					object.position.setFromCylindricalCoords( 900, theta, y );
-
-					vector.x = object.position.x * 2;
-					vector.y = object.position.y;
-					vector.z = object.position.z * 2;
-
-					object.lookAt( vector );
-
-					targets.helix.push( object );
-
+					if (value < 100000) {
+						return 'linear-gradient(160deg, #7a0f0f, #EF3022)';
+					}
+					if (value < 200000) {
+						return 'linear-gradient(160deg, #8a5a00, #FDCA35)';
+					}
+					return 'linear-gradient(160deg, #1d5c2c, #3A9F4E)';
 				}
 
-				// grid (5 x 4 x 10)
+				init();
 
-				for ( let i = 0; i < objects.length; i ++ ) {
+				async function init() {
 
-					const column = i % 5;
-					const row = Math.floor( i / 5 ) % 4;
-					const depth = Math.floor( i / 20 ); // 5 × 4 = 20 tiles per depth layer
+					const people = await parseCSV();
+					console.log('people:', people, 'count:', people.length);
+					console.log(Object.keys(people[0]));
+					camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+					camera.position.z = 3000;
 
-					const object = new THREE.Object3D();
+					scene = new THREE.Scene();
 
-					object.position.x = ( column * 400 ) - 800;
-					object.position.y = - ( row * 400 ) + 600;
-					object.position.z = ( depth * 500 ) - 2250;
 
-					targets.grid.push( object );
+					// table
+					for ( let i = 0; i < people.length; i++ ) {
 
-				}
+						// function getColorForNetWorth(netWorth) {
+						// 	let bgvalue = parseFloat(person.NetWorth);
+						// 	if (bgvalue < 100000) return '#EF3022';
+						// 	if (bgvalue < 200000) return '#FDCA35';
+						// 	if (bgvalue > 200000) return '#3A9F4E';
+						// }
 
-				//
+						const person = people[i];
 
-				renderer = new CSS3DRenderer();
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				document.getElementById( 'container' ).appendChild( renderer.domElement );
+						const element = document.createElement('div');
+						element.className = 'element';
+						element.style.background = getColorForNetWorth(person.NetWorth);
 
-				//
+						const country = document.createElement('div');
+						country.className = 'number'; 
+						country.style.left = '20px';
+						country.style.right = 'auto';
+						country.textContent = person.Country;
+						element.appendChild(country);
 
-				controls = new TrackballControls( camera, renderer.domElement );
-				controls.minDistance = 500;
-				controls.maxDistance = 6000;
-				controls.addEventListener( 'change', render );
+						const age = document.createElement('div');
+						age.className = 'number';
+						age.textContent = person.Age;
+						element.appendChild(age);
 
-				const buttonTable = document.getElementById( 'table' );
-				buttonTable.addEventListener( 'click', function () {
+						const photo = document.createElement('img');
+						photo.src = person.Photo;
+						photo.style.width = '80px';
+						photo.style.height = '80px';
+						photo.style.objectFit = 'cover';
+						photo.style.borderRadius = '4px';
+						photo.style.marginTop = '30px';
+						element.appendChild(photo);
+
+						const name = document.createElement('div');
+						name.className = 'symbol';
+						name.textContent = person.Name;
+						element.appendChild(name);
+
+						const details = document.createElement('div');
+						details.className = 'details';
+						details.textContent = person.Interest || '';
+						element.appendChild(details);
+
+						const objectCSS = new CSS3DObject(element);
+						objectCSS.position.x = Math.random() * 4000 - 2000;
+						objectCSS.position.y = Math.random() * 4000 - 2000;
+						objectCSS.position.z = Math.random() * 4000 - 2000;
+						scene.add(objectCSS);
+						objects.push(objectCSS);
+
+						// table position (20x10 grid)
+						const col = (i % 20) + 1;
+						const row = Math.floor(i / 20) + 1;
+
+						const object = new THREE.Object3D();
+						object.position.x = (col * 140) - 1330;
+						object.position.y = -(row * 180) + 990;
+						targets.table.push(object);
+
+					}
+
+					// sphere
+
+					const vector = new THREE.Vector3();
+
+					for ( let i = 0, l = objects.length; i < l; i ++ ) {
+
+						const phi = Math.acos( - 1 + ( 2 * i ) / l );
+						const theta = Math.sqrt( l * Math.PI ) * phi;
+
+						const object = new THREE.Object3D();
+
+						object.position.setFromSphericalCoords( 800, phi, theta );
+
+						vector.copy( object.position ).multiplyScalar( 2 );
+
+						object.lookAt( vector );
+
+						targets.sphere.push( object );
+
+					}
+
+					// helix (double)
+
+					for ( let i = 0, l = objects.length; i < l; i ++ ) {
+
+						const theta = i * 0.175 + ( i % 2 === 0 ? 0 : Math.PI ); // alternate strand offset by 180°
+						const y = - ( i * 8 ) + 450;
+
+						const object = new THREE.Object3D();
+
+						object.position.setFromCylindricalCoords( 900, theta, y );
+
+						vector.x = object.position.x * 2;
+						vector.y = object.position.y;
+						vector.z = object.position.z * 2;
+
+						object.lookAt( vector );
+
+						targets.helix.push( object );
+
+					}
+
+					// grid (5 x 4 x 10)
+
+					for ( let i = 0; i < objects.length; i ++ ) {
+
+						const column = i % 5;
+						const row = Math.floor( i / 5 ) % 4;
+						const depth = Math.floor( i / 20 ); // 5 × 4 = 20 tiles per depth layer
+
+						const object = new THREE.Object3D();
+
+						object.position.x = ( column * 400 ) - 800;
+						object.position.y = - ( row * 400 ) + 600;
+						object.position.z = ( depth * 500 ) - 2250;
+
+						targets.grid.push( object );
+
+					}
+
+					//
+
+					renderer = new CSS3DRenderer();
+					renderer.setSize( window.innerWidth, window.innerHeight );
+					document.getElementById( 'container' ).appendChild( renderer.domElement );
+
+					//
+
+					controls = new TrackballControls( camera, renderer.domElement );
+					controls.minDistance = 500;
+					controls.maxDistance = 6000;
+					controls.addEventListener( 'change', render );
+
+					const buttonTable = document.getElementById( 'table' );
+					buttonTable.addEventListener( 'click', function () {
+
+						transform( targets.table, 2000 );
+
+					} );
+
+					const buttonSphere = document.getElementById( 'sphere' );
+					buttonSphere.addEventListener( 'click', function () {
+
+						transform( targets.sphere, 2000 );
+
+					} );
+
+					const buttonHelix = document.getElementById( 'helix' );
+					buttonHelix.addEventListener( 'click', function () {
+
+						transform( targets.helix, 2000 );
+
+					} );
+
+					const buttonGrid = document.getElementById( 'grid' );
+					buttonGrid.addEventListener( 'click', function () {
+
+						transform( targets.grid, 2000 );
+
+					} );
 
 					transform( targets.table, 2000 );
 
-				} );
+					//
 
-				const buttonSphere = document.getElementById( 'sphere' );
-				buttonSphere.addEventListener( 'click', function () {
+					window.addEventListener( 'resize', onWindowResize );
 
-					transform( targets.sphere, 2000 );
+					animate();
+				}
 
-				} );
+				function transform( targets, duration ) {
 
-				const buttonHelix = document.getElementById( 'helix' );
-				buttonHelix.addEventListener( 'click', function () {
+					TWEEN.removeAll();
 
-					transform( targets.helix, 2000 );
+					for ( let i = 0; i < objects.length; i ++ ) {
 
-				} );
+						const object = objects[ i ];
+						const target = targets[ i ];
 
-				const buttonGrid = document.getElementById( 'grid' );
-				buttonGrid.addEventListener( 'click', function () {
+						new TWEEN.Tween( object.position )
+							.to( { x: target.position.x, y: target.position.y, z: target.position.z }, Math.random() * duration + duration )
+							.easing( TWEEN.Easing.Exponential.InOut )
+							.start();
 
-					transform( targets.grid, 2000 );
+						new TWEEN.Tween( object.rotation )
+							.to( { x: target.rotation.x, y: target.rotation.y, z: target.rotation.z }, Math.random() * duration + duration )
+							.easing( TWEEN.Easing.Exponential.InOut )
+							.start();
 
-				} );
+					}
 
-				transform( targets.table, 2000 );
-
-				//
-
-				window.addEventListener( 'resize', onWindowResize );
-
-				animate();
-			}
-
-			function transform( targets, duration ) {
-
-				TWEEN.removeAll();
-
-				for ( let i = 0; i < objects.length; i ++ ) {
-
-					const object = objects[ i ];
-					const target = targets[ i ];
-
-					new TWEEN.Tween( object.position )
-						.to( { x: target.position.x, y: target.position.y, z: target.position.z }, Math.random() * duration + duration )
-						.easing( TWEEN.Easing.Exponential.InOut )
-						.start();
-
-					new TWEEN.Tween( object.rotation )
-						.to( { x: target.rotation.x, y: target.rotation.y, z: target.rotation.z }, Math.random() * duration + duration )
-						.easing( TWEEN.Easing.Exponential.InOut )
+					new TWEEN.Tween( this )
+						.to( {}, duration * 2 )
+						.onUpdate( render )
 						.start();
 
 				}
 
-				new TWEEN.Tween( this )
-					.to( {}, duration * 2 )
-					.onUpdate( render )
-					.start();
+				function onWindowResize() {
 
-			}
+					camera.aspect = window.innerWidth / window.innerHeight;
+					camera.updateProjectionMatrix();
 
-			function onWindowResize() {
+					renderer.setSize( window.innerWidth, window.innerHeight );
 
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
+					render();
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				}
 
-				render();
+				function animate() {
 
-			}
+					requestAnimationFrame( animate );
 
-			function animate() {
+					TWEEN.update();
 
-				requestAnimationFrame( animate );
+					controls.update();
 
-				TWEEN.update();
+				}
 
-				controls.update();
+				function render() {
 
-			}
+					renderer.render( scene, camera );
 
-			function render() {
+				}
 
-				renderer.render( scene, camera );
-
-			}
-
-		</script>
+			</script>
+		</div>
 	</body>
 </html>
