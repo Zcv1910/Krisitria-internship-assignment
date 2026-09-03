@@ -75,9 +75,11 @@
 				}
 
 			button {
+				position: relative;
 				color: rgba(127,255,255,0.75);
 				background: transparent;
 				outline: 1px solid rgba(127,255,255,0.75);
+				z-index: 999;
 				border: 0px;
 				padding: 5px 10px;
 				cursor: pointer;
@@ -133,11 +135,12 @@
 		<div id="container">
 			<div id="menu">
 				<button id="table">TABLE</button>
-				<button id="sphere">SPHERE</buttoSn>
+				<button id="sphere">SPHERE</button>
 				<button id="helix">HELIX</button>
 				<button id="grid">GRID</button>
+				<button id="tetrahedron">TETRAHEDRON</button>
 
-				<div id="color-legend" style="position:fixed; bottom:70px; right:15px; z-index:10000;
+				<div id="color-legend" style="display: none; position:fixed; bottom:70px; right:15px; z-index:10000;
 					background: rgba(20,20,20,0.85); border: 1px solid rgba(255,255,255,0.15);
 					border-radius: 10px; padding: 10px 14px; font-family: Helvetica, sans-serif;
 					box-shadow: 0px 4px 12px rgba(0,0,0,0.4); color: white; font-size: 12px;">
@@ -160,6 +163,7 @@
 					sessionStorage.setItem('userPicture', data.picture);
 
 					document.getElementById('login-screen').style.display = 'none';
+					document.getElementById('color-legend').style.display = 'block';
 					showUserBadge(data.name, data.picture);
 
 					console.log(data.email, data.name, data.picture);
@@ -174,12 +178,14 @@
 				window.onload = () => {
 					if (sessionStorage.getItem('loggedIn') === 'true') {
 						document.getElementById('login-screen').style.display = 'none';
+						document.getElementById('color-legend').style.display = 'block';
 						showUserBadge(sessionStorage.getItem('userName'), sessionStorage.getItem('userPicture'));
 					}
 
 					document.getElementById('logout-btn').addEventListener('click', () => {
 						sessionStorage.clear();
 						document.getElementById('user-badge').style.display = 'none';
+						document.getElementById('color-legend').style.display = 'none';
 						document.getElementById('login-screen').style.display = 'flex';
 					});
 				}
@@ -219,7 +225,7 @@
 				let controls;
 
 				const objects = [];
-				const targets = { table: [], sphere: [], helix: [], grid: [] };
+				const targets = { table: [], sphere: [], helix: [], grid: [], tetrahedron: [] };
 
 				function getColorForNetWorth(netWorth) {
 					const value = parseFloat(String(netWorth).replace(/[^0-9.-]/g, ''));
@@ -371,6 +377,63 @@
 
 					}
 
+					// tetrahedron
+
+					const R = 900;
+
+					const tetraVertices = [
+						new THREE.Vector3(1, 1, 1).normalize().multiplyScalar(R),
+						new THREE.Vector3(1, -1, -1).normalize().multiplyScalar(R),
+						new THREE.Vector3(-1, 1, -1).normalize().multiplyScalar(R),
+						new THREE.Vector3(-1, -1, 1).normalize().multiplyScalar(R)
+					];
+
+					const tetraFaces = [
+						[0, 1, 2],
+						[0, 1, 3],
+						[0, 2, 3],
+						[1, 2, 3]
+					];
+
+					const perFace = Math.ceil(objects.length / 4);
+					const gridRows = Math.ceil((Math.sqrt(8 * perFace + 1) - 1) / 2);
+
+					for ( let i = 0; i < objects.length; i ++ ) {
+
+						const perFace = Math.ceil(objects.length / 4);
+						const gridRows = Math.ceil((Math.sqrt(8 * perFace + 1) - 1) / 2);
+
+						const faceIndex = Math.floor(i / perFace) % 4;
+						const indexInFace = i % perFace;
+
+						const face = tetraFaces[faceIndex];
+						const a = tetraVertices[face[0]];
+						const b = tetraVertices[face[1]];
+						const c = tetraVertices[face[2]];
+
+						// walk a triangular grid to get a row/col for this tile within the face
+						let row = 0, count = 0;
+						while (count + row + 1 <= indexInFace) {
+							count += row + 1;
+							row++;
+						}
+						const col = indexInFace - count;
+
+						const v = gridRows > 1 ? row / (gridRows - 1) : 0;
+						const u = row > 0 ? col / row : 0;
+
+						// barycentric interpolation across the triangle a-b-c
+						const p1 = new THREE.Vector3().lerpVectors(a, b, v);
+						const p2 = new THREE.Vector3().lerpVectors(a, c, v);
+						const point = new THREE.Vector3().lerpVectors(p1, p2, u);
+
+						const object = new THREE.Object3D();
+						object.position.copy(point);
+						object.lookAt(point.clone().multiplyScalar(2)); // face outward, like your sphere tiles do
+
+						targets.tetrahedron.push(object);
+					}
+
 					//
 
 					renderer = new CSS3DRenderer();
@@ -409,6 +472,13 @@
 					buttonGrid.addEventListener( 'click', function () {
 
 						transform( targets.grid, 2000 );
+
+					} );
+
+					const buttonTetrahedron = document.getElementById( 'tetrahedron' );
+					buttonTetrahedron.addEventListener( 'click', function () {
+
+						transform( targets.tetrahedron, 2000 );
 
 					} );
 
